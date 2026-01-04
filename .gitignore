@@ -42,3 +42,4 @@ build/
 # OS files
 Thumbs.db
 .directory
+tmp/
