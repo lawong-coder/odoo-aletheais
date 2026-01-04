@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Override the Untaxed Amount label in tax totals template -->
+    <template id="document_tax_totals_template_inherit"
+              inherit_id="account.document_tax_totals_template"
+              name="Change Untaxed Amount to Amount before GST">
+        
+        <!-- Replace the subtotal td that displays "Untaxed Amount" -->
+        <xpath expr="//tr[@class='o_subtotal']/td[1]" position="replace">
+            <td>
+                <span t-if="subtotal.get('name') == 'Untaxed Amount'">Amount before GST</span>
+                <span t-else="" t-out="subtotal['name']">Untaxed Amount</span>
+            </td>
+        </xpath>
+    </template>
+</odoo>

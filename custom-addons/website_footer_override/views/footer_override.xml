@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Override the web module brand promotion to hide it -->
+    <template id="brand_promotion_override"
+              inherit_id="web.brand_promotion"
+              name="Hide Brand Promotion">
+        <xpath expr="//div[@class='o_brand_promotion']" position="replace">
+            <!-- Replace with custom branding or leave empty -->
+            <div class="o_brand_promotion">
+                <!-- You can add custom text here if desired -->
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Override the website module brand promotion -->
+    <template id="website_brand_promotion_override"
+              inherit_id="website.brand_promotion"
+              name="Hide Website Brand Promotion">
+        <xpath expr="//t[@t-call='web.brand_promotion_message']" position="replace">
+            <!-- Replace with custom message or leave empty -->
+            <t/>
+        </xpath>
+    </template>
+</odoo>

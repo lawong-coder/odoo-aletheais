@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  odoo:
+    image: odoo:${ODOO_VERSION}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    command: >
+      odoo -c /etc/odoo/odoo.conf
+           --dev=reload,qweb,xml,assets,rpc
+           --db-filter=.*
+    volumes:
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./addons:/mnt/odoo/addons
+      - ./custom-addons:/mnt/odoo/custom-addons
+      - odoo-filestore:/var/lib/odoo
+    ports:
+      - "${HOST_HTTP_PORT}:8069"
+      - "${HOST_LONGPOLL_PORT}:8072"
+
+  # Optional: pgAdmin in case you want a DB GUI
+  pgadmin:
+    image: dpage/pgadmin4:9.8
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aletheais.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - "8081:80"
+
+volumes:
+  db-data:
+  odoo-filestore:
+  pgadmin:

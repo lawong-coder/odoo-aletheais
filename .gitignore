@@ -1,0 +1,44 @@
+# Odoo specific
+*.pyc
+*.pyo
+__pycache__/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Odoo filestore
+filestore/
+sessions/
+
+# Odoo logs
+*.log
+
+# Database backups
+*.sql
+*.dump
+*.backup
+
+# Docker
+.env.local
+*.env.local
+
+# PostgreSQL data
+pgdata/
+postgres-data/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# OS files
+Thumbs.db
+.directory
