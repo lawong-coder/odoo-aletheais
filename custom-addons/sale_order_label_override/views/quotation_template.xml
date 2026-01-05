@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 
+    ====================================================================
+    SERIALIZED LINE NUMBERING BY SECTION
+    ====================================================================
+    Adds hierarchical numbering: Sections = 1, 2, 3... Lines = 1.1, 1.2, 2.1...
+    ====================================================================
+    -->
+    
+    <template id="section_line_numbering" 
+              inherit_id="sale.report_saleorder_document"
+              name="Section-Based Line Numbering">
+        
+        <!-- Replace the entire table to add numbering column -->
+        <xpath expr="//table[hasclass('o_main_table')]" position="replace">
+            <table class="o_has_total_table table o_main_table table-borderless">
+                <t t-set="display_discount" t-value="any(l.discount for l in doc.order_line)"/>
+                
+                <thead style="display: table-header-group;">
+                    <tr>
+                        <!-- Add numbering column -->
+                        <th name="th_number" class="text-start" style="width: 5%;">#</th>
+                        <th name="th_description" class="text-start">Description</th>
+                        <th name="th_quantity" class="text-end">Quantity</th>
+                        <th name="th_priceunit" class="text-end">Unit Price</th>
+                        <th name="th_discount" t-if="display_discount" class="text-end" groups="product.group_discount_per_so_line">
+                            <span>Disc.%</span>
+                        </th>
+                        <th name="th_taxes" class="text-end">Taxes</th>
+                        <th name="th_subtotal" class="text-end">
+                            <span>Amount</span>
+                        </th>
+                    </tr>
+                </thead>
+                
+                <tbody class="sale_tbody">
+                    <t t-set="current_subtotal" t-value="0"/>
+                    <t t-set="section_index" t-value="0"/>
+                    <t t-set="line_index" t-value="0"/>
+                    
+                    <t t-foreach="doc.order_line" t-as="line">
+                        <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal"/>
+                        
+                        <!-- Section Line -->
+                        <t t-if="line.display_type == 'line_section'">
+                            <t t-set="section_index" t-value="section_index + 1"/>
+                            <t t-set="line_index" t-value="0"/>
+                            <tr class="is-subtotal text-info" style="page-break-inside: avoid;">
+                                <td name="td_section_number"><strong><span t-esc="section_index"/></strong></td>
+                                <td name="td_section_line" colspan="99"><strong><span t-field="line.name"/></strong></td>
+                            </tr>
+                            <t t-set="current_subtotal" t-value="0"/>
+                        </t>
+                        
+                        <!-- Note Line -->
+                        <t t-elif="line.display_type == 'line_note'">
+                            <tr class="is-subtotal text-muted" style="page-break-inside: avoid;">
+                                <td name="td_note_number"></td>
+                                <td name="td_note_line" colspan="99"><span t-field="line.name"/></td>
+                            </tr>
+                        </t>
+                        
+                        <!-- Regular Product Line -->
+                        <t t-else="">
+                            <t t-set="line_index" t-value="line_index + 1"/>
+                            <tr style="page-break-inside: avoid;">
+                                <!-- Numbering -->
+                                <td name="td_line_number">
+                                    <span t-if="section_index > 0" t-esc="'%s.%s' % (section_index, line_index)"/>
+                                    <span t-else="" t-esc="line_index"/>
+                                </td>
+                                
+                                <!-- Description -->
+                                <td name="td_name"><span t-field="line.name"/></td>
+                                
+                                <!-- Quantity -->
+                                <td name="td_quantity" class="text-end">
+                                    <span t-field="line.product_uom_qty"/>
+                                    <span t-field="line.product_uom" groups="uom.group_uom"/>
+                                </td>
+                                
+                                <!-- Unit Price -->
+                                <td name="td_priceunit" class="text-end">
+                                    <span t-field="line.price_unit"/>
+                                </td>
+                                
+                                <!-- Discount -->
+                                <td t-if="display_discount" class="text-end" groups="product.group_discount_per_so_line">
+                                    <span t-field="line.discount"/>
+                                </td>
+                                
+                                <!-- Taxes -->
+                                <td name="td_taxes" class="text-end">
+                                    <span t-esc="', '.join(map(lambda x: (x.description or x.name), line.tax_id))"/>
+                                </td>
+                                
+                                <!-- Amount -->
+                                <td name="td_subtotal" class="text-end">
+                                    <span t-field="line.price_subtotal" groups="account.group_show_line_subtotals_tax_excluded"/>
+                                    <span t-field="line.price_total" groups="account.group_show_line_subtotals_tax_included"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </t>
+                </tbody>
+            </table>
+        </xpath>
+    </template>
+</odoo>
