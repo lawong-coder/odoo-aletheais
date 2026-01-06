@@ -4,7 +4,8 @@
     "depends": ["sale", "account"],
     "data": [
         "views/sale_order_report.xml",
-        "views/quotation_template.xml"
+        "views/quotation_template.xml",
+        "data/email_template_data.xml"
     ],
     "installable": True,
 }

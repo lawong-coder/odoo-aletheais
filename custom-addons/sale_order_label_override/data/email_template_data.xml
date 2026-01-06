@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="mail.template" name="write">
+        <value eval="[ref('sale.email_template_edi_sale')]"/>
+        <value eval="{'body_html': '''&lt;div style=&quot;margin: 0px; padding: 0px;&quot;&gt;
+    &lt;p style=&quot;margin: 0px; padding: 0px; font-size: 13px;&quot;&gt;
+        Dear &lt;t t-out=&quot;object.partner_id.name or ''&quot;&gt;Customer&lt;/t&gt;,
+        &lt;br/&gt;&lt;br/&gt;
+        Thank you for your interest and continued support.
+        &lt;br/&gt;&lt;br/&gt;
+        We are happy to provide the quotation &lt;span style=&quot;font-weight: bold;&quot; t-out=&quot;object.name or ''&quot;&gt;SO00052&lt;/span&gt; for your review and acceptance.
+        &lt;br/&gt;&lt;br/&gt;
+        Please do not hesitate to contact us for clarifications.
+        &lt;t t-if=&quot;not is_html_empty(object.user_id.signature)&quot;&gt;
+            &lt;br/&gt;&lt;br/&gt;
+            &lt;t t-out=&quot;object.user_id.signature or ''&quot;&gt;--&lt;br/&gt;Mitchell Admin&lt;/t&gt;
+        &lt;/t&gt;
+        &lt;br/&gt;&lt;br/&gt;
+    &lt;/p&gt;
+&lt;/div&gt;'''}"/>
+    </function>
+</odoo>

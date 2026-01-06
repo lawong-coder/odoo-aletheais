@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Override the quotation email template body -->
+    <record id="sale.email_template_edi_sale" model="mail.template" forcecreate="False">
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''">Customer</t>,
+        <br/><br/>
+        Thank you for your interest and continued support.
+        <br/><br/>
+        We are happy to provide the quotation <span style="font-weight: bold;" t-out="object.name or ''">SO00052</span> for your review and acceptance.
+        <br/><br/>
+        Please do not hesitate to contact us for clarifications.
+        <t t-if="not is_html_empty(object.user_id.signature)">
+            <br/><br/>
+            <t t-out="object.user_id.signature or ''">--<br/>Mitchell Admin</t>
+        </t>
+        <br/><br/>
+    </p>
+</div>
+        </field>
+    </record>
+</odoo>
