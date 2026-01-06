@@ -37,15 +37,14 @@
                 <tbody class="sale_tbody">
                     <t t-set="current_subtotal" t-value="0"/>
                     <t t-set="section_index" t-value="0"/>
-                    <t t-set="line_index" t-value="0"/>
+                    <t t-set="line_counter" t-value="0"/>
                     
                     <t t-foreach="doc.order_line" t-as="line">
-                        <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal"/>
                         
                         <!-- Section Line -->
                         <t t-if="line.display_type == 'line_section'">
                             <t t-set="section_index" t-value="section_index + 1"/>
-                            <t t-set="line_index" t-value="0"/>
+                            <t t-set="line_counter" t-value="0"/>
                             <tr class="is-subtotal text-info" style="page-break-inside: avoid;">
                                 <td name="td_section_number"><strong><span t-esc="section_index"/></strong></td>
                                 <td name="td_section_line" colspan="99"><strong><span t-field="line.name"/></strong></td>
@@ -63,12 +62,13 @@
                         
                         <!-- Regular Product Line -->
                         <t t-else="">
-                            <t t-set="line_index" t-value="line_index + 1"/>
+                            <t t-set="line_counter" t-value="line_counter + 1"/>
+                            <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal"/>
                             <tr style="page-break-inside: avoid;">
                                 <!-- Numbering -->
                                 <td name="td_line_number">
-                                    <span t-if="section_index > 0" t-esc="'%s.%s' % (section_index, line_index)"/>
-                                    <span t-else="" t-esc="line_index"/>
+                                    <span t-if="section_index > 0" t-esc="'%s.%s' % (section_index, line_counter)"/>
+                                    <span t-else="" t-esc="line_counter"/>
                                 </td>
                                 
                                 <!-- Description -->
