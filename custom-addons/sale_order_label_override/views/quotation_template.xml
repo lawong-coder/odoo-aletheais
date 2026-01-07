@@ -36,6 +36,7 @@
                 
                 <tbody class="sale_tbody">
                     <t t-set="current_subtotal" t-value="0"/>
+                    <t t-set="current_section" t-value="None"/>
                     <t t-set="section_index" t-value="0"/>
                     <t t-set="line_counter" t-value="0"/>
                     
@@ -43,12 +44,28 @@
                         
                         <!-- Section Line -->
                         <t t-if="line.display_type == 'line_section'">
+                            <!-- Display subtotal for previous section (if exists) -->
+                            <t t-if="current_section and current_subtotal > 0">
+                                <tr class="is-subtotal text-end" style="page-break-inside: avoid; font-weight: bold;">
+                                    <td t-att-colspan="6 if display_discount else 5" style="text-align: right; padding-top: 10px; padding-bottom: 10px;">
+                                        <strong>Subtotal</strong>
+                                    </td>
+                                    <td class="text-end" style="padding-top: 10px; padding-bottom: 10px;">
+                                        <span t-esc="'%s%s' % (doc.pricelist_id.currency_id.symbol or '', '{:,.2f}'.format(current_subtotal))"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            
+                            <!-- Display new section header -->
                             <t t-set="section_index" t-value="section_index + 1"/>
                             <t t-set="line_counter" t-value="0"/>
                             <tr class="is-subtotal text-info" style="page-break-inside: avoid;">
                                 <td name="td_section_number"><strong><span t-esc="section_index"/></strong></td>
                                 <td name="td_section_line" colspan="99"><strong><span t-field="line.name"/></strong></td>
                             </tr>
+                            
+                            <!-- Track current section and reset subtotal -->
+                            <t t-set="current_section" t-value="line"/>
                             <t t-set="current_subtotal" t-value="0"/>
                         </t>
                         
@@ -102,6 +119,18 @@
                                 </td>
                             </tr>
                         </t>
+                    </t>
+                    
+                    <!-- Display final section subtotal after all lines -->
+                    <t t-if="current_section and current_subtotal > 0">
+                        <tr class="is-subtotal text-end" style="page-break-inside: avoid; font-weight: bold;">
+                            <td t-att-colspan="6 if display_discount else 5" style="text-align: right; padding-top: 10px; padding-bottom: 10px;">
+                                <strong>Subtotal</strong>
+                            </td>
+                            <td class="text-end" style="padding-top: 10px; padding-bottom: 10px;">
+                                <span t-esc="'%s%s' % (doc.pricelist_id.currency_id.symbol or '', '{:,.2f}'.format(current_subtotal))"/>
+                            </td>
+                        </tr>
                     </t>
                 </tbody>
             </table>
