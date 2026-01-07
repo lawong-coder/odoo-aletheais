@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Use function approach to bypass noupdate protection -->
+    <function model="ir.ui.view" name="write">
+        <value eval="[ref('mail.mail_notification_layout')]"/>
+        <value eval="{'arch': '''&lt;html t-att-lang=&quot;lang&quot;&gt;
+&lt;head&gt;
+    &lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html charset=UTF-8&quot; /&gt;
+&lt;/head&gt;
+&lt;body style=&quot;font-family:Verdana, Arial,sans-serif; color: #454748;&quot;&gt;
+&lt;t t-set=&quot;subtype_internal&quot; t-value=&quot;subtype and subtype.internal&quot;/&gt;
+&lt;t t-set=&quot;show_header&quot; t-value=&quot;email_notification_force_header or (
+    email_notification_allow_header and has_button_access)&quot;/&gt;
+&lt;t t-set=&quot;show_footer&quot; t-value=&quot;email_notification_force_footer or (
+    email_notification_allow_footer and show_header and author_user and author_user._is_internal())&quot;/&gt;
+&lt;!-- HEADER --&gt;
+&lt;t t-call=&quot;mail.notification_preview&quot;/&gt;
+&lt;div style=&quot;max-width: 900px; width: 100%;&quot;&gt;
+&lt;div t-if=&quot;show_header and has_button_access&quot; itemscope=&quot;itemscope&quot; itemtype=&quot;http://schema.org/EmailMessage&quot;&gt;
+    &lt;div itemprop=&quot;potentialAction&quot; itemscope=&quot;itemscope&quot; itemtype=&quot;http://schema.org/ViewAction&quot;&gt;
+        &lt;link itemprop=&quot;target&quot; t-att-href=&quot;button_access['url']&quot;/&gt;
+        &lt;link itemprop=&quot;url&quot; t-att-href=&quot;button_access['url']&quot;/&gt;
+        &lt;meta itemprop=&quot;name&quot; t-att-content=&quot;button_access['title']&quot;/&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+&lt;div t-if=&quot;show_header and (subtitles or has_button_access or not is_discussion)&quot;
+        summary=&quot;o_mail_notification&quot; style=&quot;padding: 0px;&quot;&gt;
+    &lt;table role=&quot;presentation&quot; cellspacing=&quot;0&quot; cellpadding=&quot;0&quot; border=&quot;0&quot; style=&quot;width: 100%; margin-top: 5px;&quot;&gt;
+        &lt;tbody&gt;
+            &lt;tr&gt;
+                &lt;td valign=&quot;center&quot; style=&quot;white-space:nowrap;&quot;&gt;
+                    &lt;table cellspacing=&quot;0&quot; cellpadding=&quot;0&quot; border=&quot;0&quot;&gt;
+                        &lt;tbody&gt;
+                            &lt;tr&gt;
+                                &lt;td t-if=&quot;has_button_access&quot; t-att-style=&quot;'border-radius: 3px; text-align: center; background: ' + (company.email_secondary_color or '#875A7B') + ';'&quot;&gt;
+                                    &lt;a t-att-href=&quot;button_access['url']&quot; style=&quot;font-size: 12px; color: #FFFFFF; display: block; padding: 8px 12px 11px; text-decoration: none !important; font-weight: bold;&quot;&gt;
+                                        &lt;t t-out=&quot;button_access['title']&quot;/&gt;
+                                    &lt;/a&gt;
+                                &lt;/td&gt;
+                                &lt;td t-if=&quot;has_button_access&quot;&gt;&amp;#160;&amp;#160;&lt;/td&gt;
+                                &lt;td t-if=&quot;subtitles&quot; style=&quot;font-size: 12px;&quot;&gt;
+                                     &lt;t t-foreach=&quot;subtitles&quot; t-as=&quot;subtitle&quot;&gt;
+                                        &lt;span t-attf-style=&quot;{{ 'font-weight:bold;' if subtitle_first else '' }}&quot;
+                                              t-out=&quot;subtitle&quot;/&gt;
+                                        &lt;br t-if=&quot;not subtitle_last&quot;/&gt;
+                                    &lt;/t&gt;
+                                &lt;/td&gt;
+                                &lt;td t-else=&quot;&quot;&gt;&lt;span style=&quot;font-weight:bold;&quot; t-out=&quot;record_name&quot;/&gt;&lt;br/&gt;&lt;/td&gt;
+                            &lt;/tr&gt;
+                        &lt;/tbody&gt;
+                    &lt;/table&gt;
+                &lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td valign=&quot;center&quot;&gt;
+                    &lt;hr width=&quot;100%&quot;
+                        style=&quot;background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0;margin: 10px 0px;&quot;/&gt;
+                &lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+&lt;/div&gt;
+&lt;!-- CONTENT --&gt;
+&lt;div t-out=&quot;message.body&quot; style=&quot;font-size: 13px;&quot;/&gt;
+&lt;ul t-if=&quot;tracking_values&quot;&gt;
+    &lt;t t-foreach=&quot;tracking_values&quot; t-as=&quot;tracking&quot;&gt;
+        &lt;li&gt;&lt;t t-out=&quot;tracking[0]&quot;/&gt;: &lt;t t-if=&quot;tracking[1]&quot; t-out=&quot;tracking[1]&quot;/&gt;&lt;em t-else=&quot;&quot;&gt;None&lt;/em&gt; &amp;#8594; &lt;t t-if=&quot;tracking[2]&quot; t-out=&quot;tracking[2]&quot;/&gt;&lt;em t-else=&quot;&quot;&gt;None&lt;/em&gt;&lt;/li&gt;
+    &lt;/t&gt;
+&lt;/ul&gt;
+&lt;t class=&quot;o_signature&quot;&gt;
+    &lt;div t-if=&quot;email_add_signature and not is_html_empty(signature)&quot; t-out=&quot;signature&quot; style=&quot;font-size: 13px;&quot;/&gt;
+&lt;/t&gt;
+&lt;!-- FOOTER REMOVED --&gt;
+&lt;/div&gt;
+&lt;/body&gt;&lt;/html&gt;'''}"/>
+    </function>
+</odoo>
