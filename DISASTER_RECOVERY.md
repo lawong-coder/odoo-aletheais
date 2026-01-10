@@ -186,34 +186,84 @@ docker compose logs db | tail -n 20
 ### Step 7: Restore Database
 
 ```bash
-# Copy database dump into container
 BACKUP_DIR=~/odoo-restore/odoo_backup_20260104_120000
-DB_CONTAINER=$(docker compose ps -q db)
 
+# CRITICAL: Detect actual database name from the dump file
+echo "Detecting database name from backup..."
+DB_NAME=$(strings "$BACKUP_DIR/database.dump" | grep -oP "Database: \K\w+" | head -1)
+
+# Fallback: check if there's a single non-template database in dump
+if [ -z "$DB_NAME" ]; then
+    DB_NAME=$(pg_restore -l "$BACKUP_DIR/database.dump" 2>/dev/null | grep "dbname:" | head -1 | awk -F': ' '{print $2}')
+fi
+
+# Last resort: use .env value
+if [ -z "$DB_NAME" ]; then
+    source .env
+    DB_NAME="$POSTGRES_DB"
+fi
+
+echo "Database name detected: $DB_NAME"
+
+# Update .env to match the backup
+sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=$DB_NAME/" .env
+echo "✓ Updated .env: POSTGRES_DB=$DB_NAME"
+
+# Copy database dump into container
+DB_CONTAINER=$(docker compose ps -q db)
 docker cp "$BACKUP_DIR/database.dump" ${DB_CONTAINER}:/tmp/restore.dump
 
-# Drop and recreate database (if needed)
-docker compose exec db psql -U odoo -d postgres -c "DROP DATABASE IF EXISTS postgres;" 2>/dev/null || true
-docker compose exec db psql -U odoo -d postgres -c "CREATE DATABASE postgres OWNER odoo;"
+# Drop and recreate database with detected name
+docker compose exec db psql -U odoo -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
+docker compose exec db psql -U odoo -d postgres -c "CREATE DATABASE $DB_NAME OWNER odoo;"
 
 # Restore database from dump
-echo "Restoring database... (this may take several minutes)"
+echo "Restoring database '$DB_NAME'... (this may take several minutes)"
 docker compose exec db pg_restore \
   -U odoo \
-  -d postgres \
+  -d $DB_NAME \
   --no-owner \
   --role=odoo \
   --verbose \
   /tmp/restore.dump
 
 # Verify database restoration
-docker compose exec db psql -U odoo -d postgres -c "\dt" | head -n 20
+echo "✓ Database '$DB_NAME' restored"
+docker compose exec db psql -U odoo -d $DB_NAME -c "\dt" | head -n 20
+
+# Verify .env matches restored database
+source .env
+if [ "$POSTGRES_DB" = "$DB_NAME" ]; then
+    echo "✓ .env POSTGRES_DB matches restored database: $DB_NAME"
+else
+    echo "⚠ WARNING: .env has POSTGRES_DB=$POSTGRES_DB but restored $DB_NAME"
+    echo "  Update .env before starting Odoo!"
+fi
+
+# IMPORTANT: Verify the database name matches .env
+source .env
+echo "Database in .env: $POSTGRES_DB"
+docker compose exec db psql -U odoo -d postgres -c "\l" | grep $POSTGRES_DB
 ```
 
-### Step 8: Restore Filestore
+### Step 8: Start Odoo Service (Required for Volume Creation)
 
 ```bash
-# Get the volume name
+# Start Odoo to create the filestore volume
+docker compose up -d odoo
+
+# Wait for Odoo to initialize (this will create the volume)
+echo "Waiting for Odoo to initialize..."
+sleep 20
+
+# Stop Odoo before restoring filestore
+docker compose stop odoo
+```
+
+### Step 9: Restore Filestore
+
+```bash
+# Get the volume name (now it exists)
 VOLUME_NAME=$(docker volume ls -q | grep odoo-filestore)
 echo "Volume: $VOLUME_NAME"
 
@@ -228,7 +278,7 @@ docker run --rm \
 echo "✓ Filestore restored"
 ```
 
-### Step 9: Start Odoo Service
+### Step 10: Start Odoo with Restored Data
 
 ```bash
 # Start Odoo
@@ -241,7 +291,7 @@ docker compose logs -f odoo
 # Press Ctrl+C to exit logs
 ```
 
-### Step 10: Verify Installation
+### Step 11: Verify Installation
 
 ```bash
 # Check all containers are running
@@ -253,11 +303,14 @@ curl -I http://localhost:8069
 # Check Odoo version
 docker compose logs odoo | grep "Odoo version"
 
+# Verify database is loaded in Odoo
+docker compose logs odoo | grep -i database
+
 # View recent logs
 docker compose logs --tail=50 odoo
 ```
 
-### Step 11: Access Odoo
+### Step 12: Access Odoo
 
 ```bash
 # Get VM IP address
@@ -438,8 +491,19 @@ docker compose exec db psql -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE 
 docker compose exec -T db pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --role="$POSTGRES_USER" /tmp/restore.dump 2>&1 | grep -v "ERROR.*already exists" || true
 echo -e "${GREEN}✓ Database restored${NC}"
 
+# Start Odoo to create volume
+echo "Step 6/9: Starting Odoo (to create filestore volume)..."
+docker compose up -d odoo
+sleep 20
+echo -e "${GREEN}✓ Odoo volume created${NC}"
+
+# Stop Odoo before restoring filestore
+echo "Stopping Odoo for filestore restoration..."
+docker compose stop odoo
+sleep 5
+
 # Restore filestore
-echo "Step 6/9: Restoring filestore..."
+echo "Step 7/9: Restoring filestore..."
 VOLUME_NAME="${PROJECT_NAME}_odoo-filestore"
 docker run --rm \
   -v ${VOLUME_NAME}:/target \
@@ -448,13 +512,13 @@ docker run --rm \
 echo -e "${GREEN}✓ Filestore restored${NC}"
 
 # Start Odoo
-echo "Step 7/9: Starting Odoo..."
+echo "Step 8/9: Starting Odoo with restored data..."
 docker compose up -d odoo
 sleep 10
 echo -e "${GREEN}✓ Odoo started${NC}"
 
 # Wait for Odoo to be ready
-echo "Step 8/9: Waiting for Odoo to be ready..."
+echo "Step 9/9: Waiting for Odoo to be ready..."
 for i in {1..30}; do
     if curl -s http://localhost:${HOST_HTTP_PORT:-8069} > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Odoo is responding${NC}"
@@ -464,7 +528,7 @@ for i in {1..30}; do
 done
 
 # Cleanup
-echo "Step 9/9: Cleaning up..."
+echo "Cleaning up temporary files..."
 rm -rf "$TEMP_DIR"
 echo -e "${GREEN}✓ Cleanup complete${NC}"
 
@@ -497,6 +561,35 @@ rsync -avzh rsync://nas:/odoo-aletheais-prod/odoo_backup_20260104_120000.tar.gz 
 ```
 
 ## Troubleshooting
+
+### ⚠️ MOST COMMON: Odoo Prompts to Create New Database
+
+**Cause:** The `.env` file's `POSTGRES_DB` doesn't match the actual restored database name.
+
+```bash
+# 1. Check what databases exist in PostgreSQL
+docker compose exec db psql -U odoo -d postgres -c "\l" | grep -v template
+
+# 2. Check what .env says
+grep POSTGRES_DB .env
+
+# 3. Find which database has your data
+docker compose exec db psql -U odoo -d <database_name> -c "SELECT count(*) FROM res_users;"
+
+# 4. Update .env to match
+nano .env
+# Change: POSTGRES_DB=<actual_database_name>
+
+# 5. Restart Odoo
+docker compose restart odoo
+
+# 6. Clear browser cache/cookies and retry
+```
+
+**Prevention:** Always verify database names match after restoration:
+```bash
+source .env && echo "ENV: $POSTGRES_DB" && docker compose exec db psql -U odoo -d postgres -c "\l" | grep "$POSTGRES_DB"
+```
 
 ### Database Container Won't Start
 

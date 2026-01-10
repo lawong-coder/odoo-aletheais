@@ -2,7 +2,7 @@
 
 # Odoo Production Backup Script
 # Backs up PostgreSQL database and Odoo filestore to remote rsync server
-
+set -x
 set -e  # Exit on error
 
 # Configuration
