@@ -188,32 +188,49 @@ docker compose logs db | tail -n 20
 ```bash
 BACKUP_DIR=~/odoo-restore/odoo_backup_20260104_120000
 
-# CRITICAL: Detect actual database name from the dump file
-echo "Detecting database name from backup..."
-DB_NAME=$(strings "$BACKUP_DIR/database.dump" | grep -oP "Database: \K\w+" | head -1)
+# Read database name from restored .env (backup script backs up this database)
+source .env
+DB_NAME="$POSTGRES_DB"
+echo "Database name from .env: $DB_NAME"
 
-# Fallback: check if there's a single non-template database in dump
-if [ -z "$DB_NAME" ]; then
-    DB_NAME=$(pg_restore -l "$BACKUP_DIR/database.dump" 2>/dev/null | grep "dbname:" | head -1 | awk -F': ' '{print $2}')
+# CRITICAL: Verify the dump file contains this database
+DUMP_DB=$(pg_restore -l "$BACKUP_DIR/database.dump" 2>/dev/null | grep "dbname:" | head -1 | awk -F': ' '{print $2}')
+if [ -n "$DUMP_DB" ] && [ "$DUMP_DB" != "$DB_NAME" ]; then
+    echo "❌ CRITICAL ERROR: Backup integrity check failed!"
+    echo "   Database dump contains: '$DUMP_DB'"
+    echo "   But .env specifies: '$DB_NAME'"
+    echo ""
+    echo "   This indicates a backup inconsistency or corruption."
+    echo "   DO NOT PROCEED - the backup is invalid."
+    echo ""
+    echo "   Possible causes:"
+    echo "   - .env and database.dump are from different backups"
+    echo "   - Backup was incomplete or corrupted"
+    echo "   - Wrong backup file was downloaded"
+    echo ""
+    echo "   Action required: Verify backup integrity and try a different backup."
+    exit 1
 fi
 
-# Last resort: use .env value
-if [ -z "$DB_NAME" ]; then
-    source .env
-    DB_NAME="$POSTGRES_DB"
+if [ -z "$DUMP_DB" ]; then
+    echo "⚠ WARNING: Could not detect database name from dump file."
+    echo "   This may be normal for some backup formats."
+    echo "   Proceeding with .env value: $DB_NAME"
+    read -p "   Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Restore aborted by user."
+        exit 1
+    fi
+else
+    echo "✓ Backup validation passed: dump contains database '$DB_NAME'"
 fi
-
-echo "Database name detected: $DB_NAME"
-
-# Update .env to match the backup
-sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=$DB_NAME/" .env
-echo "✓ Updated .env: POSTGRES_DB=$DB_NAME"
 
 # Copy database dump into container
 DB_CONTAINER=$(docker compose ps -q db)
 docker cp "$BACKUP_DIR/database.dump" ${DB_CONTAINER}:/tmp/restore.dump
 
-# Drop and recreate database with detected name
+# Drop and recreate database
 docker compose exec db psql -U odoo -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
 docker compose exec db psql -U odoo -d postgres -c "CREATE DATABASE $DB_NAME OWNER odoo;"
 
@@ -230,20 +247,7 @@ docker compose exec db pg_restore \
 # Verify database restoration
 echo "✓ Database '$DB_NAME' restored"
 docker compose exec db psql -U odoo -d $DB_NAME -c "\dt" | head -n 20
-
-# Verify .env matches restored database
-source .env
-if [ "$POSTGRES_DB" = "$DB_NAME" ]; then
-    echo "✓ .env POSTGRES_DB matches restored database: $DB_NAME"
-else
-    echo "⚠ WARNING: .env has POSTGRES_DB=$POSTGRES_DB but restored $DB_NAME"
-    echo "  Update .env before starting Odoo!"
-fi
-
-# IMPORTANT: Verify the database name matches .env
-source .env
-echo "Database in .env: $POSTGRES_DB"
-docker compose exec db psql -U odoo -d postgres -c "\l" | grep $POSTGRES_DB
+docker compose exec db psql -U odoo -d postgres -c "\l" | grep $DB_NAME
 ```
 
 ### Step 8: Start Odoo Service (Required for Volume Creation)
