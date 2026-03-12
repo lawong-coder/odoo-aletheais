@@ -21,3 +21,13 @@ echo "Upgrading module '$MODULE_NAME' on database '$DB_NAME'..."
 docker exec "$CONTAINER_NAME" odoo -d "$DB_NAME" -u "$MODULE_NAME" --stop-after-init
 
 echo "Upgrade complete."
+
+echo "Restarting Odoo service..."
+docker compose restart odoo
+
+echo "Waiting for Odoo to fully restart..."
+sleep 10
+
+echo ""
+echo "Odoo has been restarted and module '$MODULE_NAME' upgraded!"
+echo "You can now access Odoo at http://localhost:8069"
