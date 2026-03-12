@@ -39,6 +39,11 @@ postgres-data/
 dist/
 build/
 .eggs/
+.venv/
+venv/
+ENV/
+env/
+scripts/.venv/
 
 # OS files
 Thumbs.db
